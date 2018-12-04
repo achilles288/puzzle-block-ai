@@ -27,7 +27,7 @@ void BoardNode::copyNodeData(BoardNode *n) {
   }
 }
 
-// h(s) = max(number of error blocks, total displacement of the blocks)
+// h(s) = number of error blocks + total displacement of the blocks
 int BoardNode::heuristic(Node *g) {
   BoardNode *goal = (BoardNode*)g;
   int h1 = 0;
