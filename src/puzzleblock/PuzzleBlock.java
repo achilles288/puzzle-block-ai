@@ -54,7 +54,6 @@ public class PuzzleBlock {
         board.setBackground(new Color(0x1e3151));
         f.add(board);
         puzzleAI = new PuzzleBlock_AI();
-        puzzleAI.setRandomBlocks(board);
         btnAI = new JButton("Click to solve");
         btnAI.setBounds(650, 120, 160, 40);
         btnAI.addActionListener((e) -> {
@@ -64,7 +63,7 @@ public class PuzzleBlock {
         btnRandom = new JButton("Random steps 100");
         btnRandom.setBounds(650, 180, 160, 40);
         btnRandom.addActionListener((e) -> {
-            puzzleAI.setRandomBlocks(board);
+            board.randomBlocks();
         });
         f.add(btnRandom);
         lblSteps = new JLabel("Steps: 0");

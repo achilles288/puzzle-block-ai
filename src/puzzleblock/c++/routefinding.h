@@ -1,76 +1,79 @@
-/*
- * First step to AI. Route finding algorithm. C++ for performance and Java for UI.
- *
- * Library	: routefinding
- * Author	: Khant Kyaw Khaung
- * Compiler	: gcc version 7.3.0 (Ubuntu 7.3.0-16ubuntu3)
- * Date		: 17 Oct 2018
- */
-
-/*
- * File		: routefinding.h
- *
- * Structures of nodes and actions. A* search algorithm is used.
- */
-
 #ifndef __ROUTEFINDING_H__
 #define __ROUTEFINDING_H__
 
-#define NEW_NODE 0
-#define FRONTIER 1
-#define EXPLORED 2
-#define GOAL 3
-
-#include <time.h>
+#include <mutex>
+#include <ctime>
 #include <vector>
+
 
 class Node;
 class Action;
 class RouteFinding;
 
+// The structure containing informations of the system which need route finding.
 class Node {
+  friend RouteFinding;
+
   public:
-    unsigned short cost = 0;
-    Action* parent = NULL;
-    std::vector<Action*> action;
     Node();
-    ~Node();
-};
-
-class Action {
-  public:
-    Node *start;
-    Node *end;
-    unsigned short cost;
-    unsigned short parameter = -1;
-    Action(Node *st, Node *en, int c);
-};
-
-class RouteFinding {
-  protected:
-    std::vector<Node*> newNodes;
-    std::vector<Node*> frontier;
-    std::vector<Node*> explored;
-    std::vector<int> answer;
-    Node *start;
-    Node *goal;
 
   private:
-    unsigned short cost;
-    clock_t computingTime;
+    unsigned short cost = 0; // Total cost traveled to get to this node.
+    Action *parent = NULL; // The action object which leads to this node.
+
+  protected:
+    std::vector<Action*> action; // A list of available actions.
+    virtual int heuristic(Node *g); // Gets error between this node and goal node.
+
+    // Looks for some available actions. Add them to 'vec'.
+    virtual void expandNode(std::vector<Node*>& vec);
+
+    // To remove not to go back to explored node.
+    virtual Node *getDuplicateNode(
+      std::vector<Node*>::iterator st,
+      std::vector<Node*>::iterator en
+    );
+};
+
+
+// The available step by a node. A linkage between the nodes.
+class Action {
+  friend RouteFinding;
 
   public:
-    RouteFinding(Node *st, Node *g);
-    ~RouteFinding();
-    void startFinding();
-    virtual int heuristic(Node *a, Node *b);
-    virtual void expandNode(Node *n);
-    virtual Node *checkExplored(Node *n);
-    virtual Node *checkDuplicateFrontier(Node *n);
-    int getRoute();
-    void clear();
-    int getCost();
-    float getComputingTime_sec();
+    Action(Node *st, Node *en, int c, char p);
+
+  private:
+    Node *start; // Start node.
+    Node *end; // End node.
+    unsigned short cost; // Cost to perform this action.
+    char parameter = -1; // Action index, the decision for the app.
+};
+
+// The route finding system. Algorithms and structures.
+class RouteFinding {
+  public:
+    RouteFinding(Node *g); // Constructs a system with a goal node 'g'.
+    void startFinding(Node *start); // Starts route finding from a start node 'st'.
+    int getRoute(); //Get action index, the decision for the app.
+    void setThinkTime(int ms);
+    void clearAnswer();
+
+  private:
+    Node *nearest;
+    Node *goal;
+    std::vector<Node*> new_node; // New nodes expanded by a node.
+    std::vector<Node*> frontier; // A list of nodes leading to answer. 1 must expand.
+    std::vector<Node*> explored; // After node expansion, move the parent to it.
+    std::vector<char> answer; // A list of action indecies, steps to the goal node.
+    std::mutex answer_mutex;
+    clock_t st_clock;
+    int search_no = 0;
+    int step = 0;
+    int think_time = 5000;
+    int timeout = 0;
+    int findRoute();
+    void clearNodes(); // Clear frontier, explored and new_node.
 };
 
 #endif

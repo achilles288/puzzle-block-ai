@@ -5,8 +5,6 @@
  */
 package puzzleblock;
 
-import java.io.File;
-import javax.swing.JComponent;
 import javax.swing.Timer;
 
 /**
@@ -51,23 +49,7 @@ public class PuzzleBlock_AI {
         playing.start();
     }
     
-    public void setRandomBlocks(Board b) {
-        board = b;
-        randomBlocks();
-        int i = getBlockIndex_nextMove();
-        while(true) {
-            if(i >= 0)
-                board.slideBlock(board.blocks[i], board.blocks[board.blankIndex], true);
-            else {
-                clearRouteFinding();
-                break;
-            }
-            i = getBlockIndex_nextMove();
-        }
-    }
-    
     private native void startRouteFinding();
     private native void clearRouteFinding();
     private native int getBlockIndex_nextMove();
-    private native void randomBlocks();
 }

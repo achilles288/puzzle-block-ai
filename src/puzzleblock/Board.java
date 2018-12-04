@@ -117,8 +117,10 @@ public class Board extends JPanel implements ComponentListener {
             
             return true;
         }
-        else
+        else {
+            System.out.println("Wrong move!");
             return false;
+        }
     }
     
     @Override
@@ -139,4 +141,24 @@ public class Board extends JPanel implements ComponentListener {
 
     @Override
     public void componentHidden(ComponentEvent e) {}
+     
+    private int getIndexByPosition(int x, int y) {
+        for(int i=0; i<col*row; i++) {
+            if(blocks[i].x == x && blocks[i].y == y)
+                return i;
+        }
+        return 0;
+    }
+    
+    public void randomBlocks() {
+        int moves[][] = {{0, -1}, {1, 0}, {0, 1}, {-1, 0}};
+        Random rand = new Random();
+        for(int i=0; i<50; i++) {
+            int bx = blocks[blankIndex].x;
+            int by = blocks[blankIndex].y;
+            int r = rand.nextInt(4);
+            Block b = blocks[getIndexByPosition(bx+moves[r][0], by+moves[r][1])];
+            slideBlock(b, blocks[blankIndex], true);
+        }
+    }
 }

@@ -1,257 +1,186 @@
-/*
- * First step to AI. Route finding algorithm. C++ for performance and Java for UI.
- *
- * Library	: routefinding
- * Author	: Khant Kyaw Khaung
- * Compiler	: gcc version 7.3.0 (Ubuntu 7.3.0-16ubuntu3)
- * Date		: 17 Oct 2018
- */
+#include "puzzleblock.h"
 
-/*
- * File		: routefinding.cpp
- */
+#include <iostream>
 
-#include "puzzleblock_PuzzleBlock_AI.h"
-#include "routefinding.h"
-#include <algorithm>
-#include <vector>
-#include <cstdlib>
+using namespace std;
 
-class RouteFinding_PuzzleBlock;
 
-class BNode: public Node {
-  friend class RouteFinding_PuzzleBlock;
-
-  public:
-    unsigned short *x;
-    unsigned short *y;
-    unsigned short arraySize;
-    BNode() {};
-
-  private:
-    int getBlockIndexByPosition(int x2, int y2) {
-      for(int i=0; i<arraySize; i++) {
-        if(x[i] == x2 && y[i] == y2)
-          return i;
-      }
-      return -1;
-    }
-
-    void copyPositionArray(BNode *n) {
-      n->arraySize = arraySize;
-      n->x = new unsigned short[arraySize];
-      n->y = new unsigned short[arraySize];
-      for(int i=0; i<arraySize; i++) {
-        n->x[i] = x[i];
-        n->y[i] = y[i];
-      }
-    }
-};
-
-class RouteFinding_PuzzleBlock: public RouteFinding {
-  public:
-    int col;
-    int row;
-    int blankIndex;
-
-    int heuristic(Node *a, Node *b) {
-      BNode *A, *B;
-      A = (BNode*)a;
-      B = (BNode*)b;
-      int h1 = 0;
-      int h2 = 0;
-      for(int i=0; i < A->arraySize; i++) {
-        if(A->x[i] != B->x[i] || A->y[i] != B->y[i])
-          h1 += 2;
-        h2 = h2 + abs(A->x[i] - B->x[i]) + abs(A->y[i] - B->y[i]);
-      };
-      return std::max(h1, h2);
-    }
-    
-    RouteFinding_PuzzleBlock(Node *st, Node *g): RouteFinding(st, g) {}
-
-    void expandNode(Node *n) {
-      BNode *N = (BNode*)n;
-      int bx = N->x[blankIndex];
-      int by = N->y[blankIndex];
-
-      int itop = N->getBlockIndexByPosition(bx, by-1);
-      if(itop != -1) {
-        BNode *e = new BNode();
-        N->copyPositionArray(e);
-        e->y[itop] = by;
-        e->y[blankIndex] = by-1;
-        Action *a = new Action(n, e, 1);
-        a->parameter = itop;
-        n->action.push_back(a);
-        newNodes.push_back(e);
-      }
-
-      int iright = N->getBlockIndexByPosition(bx+1, by);
-      if(iright != -1) {
-        BNode *e = new BNode();
-        N->copyPositionArray(e);
-        e->x[iright] = bx;
-        e->x[blankIndex] = bx+1;
-        Action *a = new Action(n, e, 1);
-        a->parameter = iright;
-        n->action.push_back(a);
-        newNodes.push_back(e);
-      }
-
-      int ibottom = N->getBlockIndexByPosition(bx, by+1);
-      if(ibottom != -1) {
-        BNode *e = new BNode();
-        N->copyPositionArray(e);
-        e->y[ibottom] = by;
-        e->y[blankIndex] = by+1;
-        Action *a = new Action(n, e, 1);
-        a->parameter = ibottom;
-        n->action.push_back(a);
-        newNodes.push_back(e);
-      }
-
-      int ileft = N->getBlockIndexByPosition(bx-1, by);
-      if(ileft != -1) {
-        BNode *e = new BNode();
-        N->copyPositionArray(e);
-        e->x[ileft] = bx;
-        e->x[blankIndex] = bx-1;
-        Action *a = new Action(n, e, 1);
-        a->parameter = ileft;
-        n->action.push_back(a);
-        newNodes.push_back(e);
-      }
-    }
-
-    Node *checkExplored(Node *n) {
-      BNode *a = (BNode*) n;
-      for(std::vector<Node*>::iterator it = explored.begin();
-          it != explored.end(); it++)
-      {
-        BNode *b = (BNode*)(*it);
-        bool identical = true;
-        for(int i=0; i < a->arraySize; i++) {
-          if(a->x[i] != b->x[i] || a->y[i] != b->y[i]) {
-            identical = false;
-            break;
-          }
-        }
-        if(identical)
-          return *it;
-      }
-      return NULL;
-    }
-
-    Node *checkDuplicateFrontier(Node *n) {
-      BNode *a = (BNode*) n;
-      for(std::vector<Node*>::iterator it = frontier.begin();
-          it != frontier.end(); it++)
-      {
-        BNode *b = (BNode*)(*it);
-        bool identical = true;
-        for(int i=0; i < a->arraySize; i++) {
-          if(a->x[i] != b->x[i] || a->y[i] != b->y[i]) {
-            identical = false;
-            break;
-          }
-        }
-        if(identical)
-          return *it;
-      }
-      return NULL;
-    }
-
-    void randomPath(int steps) {
-      BNode *n = (BNode*)start;
-      for(int i=0; i<steps; i++) {
-        expandNode(n);
-        int l = n->action.size();
-        Action *a = n->action[rand() % l];
-        answer.push_back(a->parameter);
-        n = (BNode*)a->end;
-      }
-    }
-};
-
-static RouteFinding_PuzzleBlock *problem;
-
-namespace jni {
-  static BNode *start;
+BoardNode::BoardNode() {
+  x = new char[arraySize];
+  y = new char[arraySize];
 }
 
-using namespace jni;
+// Convert position to index.
+int BoardNode::getBlockIndexByPosition(int x2, int y2) {
+  for(int i=0; i<arraySize; i++) {
+    if(x[i] == x2 and y[i] == y2) {
+      return i;
+    }
+  }
+  return -1;
+}
 
+void BoardNode::copyNodeData(BoardNode *n) {
+  for(int i=0; i<arraySize; i++) {
+    n->x[i] = x[i];
+    n->y[i] = y[i];
+  }
+}
+
+// h(s) = max(number of error blocks, total displacement of the blocks)
+int BoardNode::heuristic(Node *g) {
+  BoardNode *goal = (BoardNode*)g;
+  int h1 = 0;
+  int h2 = 0;
+  for(int i=0; i<arraySize; i++) {
+    if(x[i] != goal->x[i] or y[i] != goal->y[i])
+      h1 += 2;
+    h2 = h2 + abs(x[i] - goal->x[i]) + abs(y[i] - goal->y[i]);
+  };
+  return h1 + h2;
+}
+
+/*
+ * Pushes the nodes resulted from available actions. Can move the blocks nearby the
+ * blank.
+ */
+void BoardNode::expandNode(vector<Node*>& vec) {
+  int bx = x[blankIndex];
+  int by = y[blankIndex];
+
+  int itop = getBlockIndexByPosition(bx, by-1);
+  if(itop != -1) {
+    BoardNode *e = new BoardNode();
+    copyNodeData(e);
+    e->y[itop] = by;
+    e->y[blankIndex] = by-1;
+    Action *a = new Action(this, e, 1, itop);
+    action.push_back(a);
+    vec.push_back(e);
+  }
+
+  int iright = getBlockIndexByPosition(bx+1, by);
+  if(iright != -1) {
+    BoardNode *e = new BoardNode();
+    copyNodeData(e);
+    e->x[iright] = bx;
+    e->x[blankIndex] = bx+1;
+    Action *a = new Action(this, e, 1, iright);
+    action.push_back(a);
+    vec.push_back(e);
+  }
+
+  int ibottom = getBlockIndexByPosition(bx, by+1);
+  if(ibottom != -1) {
+    BoardNode *e = new BoardNode();
+    copyNodeData(e);
+    e->y[ibottom] = by;
+    e->y[blankIndex] = by+1;
+    Action *a = new Action(this, e, 1, ibottom);
+    action.push_back(a);
+    vec.push_back(e);
+  }
+
+  int ileft = getBlockIndexByPosition(bx-1, by);
+  if(ileft != -1) {
+    BoardNode *e = new BoardNode();
+    copyNodeData(e);
+    e->x[ileft] = bx;
+    e->x[blankIndex] = bx-1;
+    Action *a = new Action(this, e, 1, ileft);
+    action.push_back(a);
+    vec.push_back(e);
+  }
+}
+
+
+// Compares with every node from the list.
+Node *BoardNode::getDuplicateNode(
+  vector<Node*>::iterator st,
+  vector<Node*>::iterator en
+)
+{
+  for(std::vector<Node*>::iterator it = st; it != en; it++) {
+    BoardNode *n = (BoardNode*)(*it);
+    bool identical = true;
+    for(int i=0; i<arraySize; i++) {
+      if(x[i] != n->x[i] or y[i] != n->y[i]) {
+        identical = false;
+        break;
+      }
+    }
+    if(identical)
+      return *it;
+  }
+  return NULL;
+}
+
+
+static RouteFinding *finding = NULL;
+static BoardNode *start;
+static BoardNode *goal;
+
+
+// Access java class info and objects.
 void fetchJavaObjects(JNIEnv *env, jobject obj) {
-  puzzleAIClass = env->GetObjectClass(obj);
-   idBoard = env->GetFieldID(puzzleAIClass, "board", "Lpuzzleblock/Board;");
-   board = env->GetObjectField(obj, idBoard);
-  boardClass = env->GetObjectClass(board);
-   idCol = env->GetFieldID(boardClass, "col", "I");
-   idRow = env->GetFieldID(boardClass, "row", "I");
-   idBlankIndex = env->GetFieldID(boardClass, "blankIndex", "I");
-   idBlockArray = env->GetFieldID(boardClass, "blocks", "[Lpuzzleblock/Block;");
-   blockArrayObj = env->GetObjectField(board, idBlockArray);
+  jclass puzzleAIClass = env->GetObjectClass(obj);
+   jfieldID idBoard = env->GetFieldID(puzzleAIClass, "board", "Lpuzzleblock/Board;");
+   jobject board = env->GetObjectField(obj, idBoard);
+
+  jclass boardClass = env->GetObjectClass(board);
+   jfieldID idCol = env->GetFieldID(boardClass, "col", "I");
+   jfieldID idRow = env->GetFieldID(boardClass, "row", "I");
+   jfieldID idBlankIndex = env->GetFieldID(boardClass, "blankIndex", "I");
+   jfieldID idBlockArray = env->GetFieldID(boardClass, "blocks", "[Lpuzzleblock/Block;");
+   jobject blockArrayObj = env->GetObjectField(board, idBlockArray);
    jobjectArray *blockArray = reinterpret_cast<jobjectArray*>(&blockArrayObj);
-   blockArrayLen = env->GetArrayLength(*blockArray);
-   blocks = new jobject[blockArrayLen];
-   for(int i=0; i<blockArrayLen; i++)
+   arraySize = env->GetArrayLength(*blockArray);
+   jobject *blocks = new jobject[arraySize];
+   for(int i=0; i<arraySize; i++)
      blocks[i] = env->GetObjectArrayElement(*blockArray, i);
+
   jclass blockClass = env->GetObjectClass(blocks[0]);
    jfieldID idX = env->GetFieldID(blockClass, "x", "I");
    jfieldID idY = env->GetFieldID(blockClass, "y", "I");
 
   col = env->GetIntField(board, idCol);
   row = env->GetIntField(board, idRow);
-  start = new BNode();
-  start->arraySize = col*row;
-  start->x = new unsigned short[start->arraySize];
-  start->y = new unsigned short[start->arraySize];
-  for(int i=0; i<start->arraySize; i++) {
+  blankIndex = env->GetIntField(board, idBlankIndex);
+
+  if(finding == NULL) {
+    goal = new BoardNode();
+    for(int i=0; i<arraySize; i++) {
+      goal->x[i] = i % col;
+      goal->y[i] = i / col;
+    }
+  }
+  start = new BoardNode();
+  for(int i=0; i<arraySize; i++) {
     start->x[i] = env->GetIntField(blocks[i], idX);
     start->y[i] = env->GetIntField(blocks[i], idY);
   }
 }
 
+
+// Finds the answer for the puzzle block problem.
 JNIEXPORT void JNICALL Java_puzzleblock_PuzzleBlock_1AI_startRouteFinding
   (JNIEnv *env, jobject obj)
 {
   fetchJavaObjects(env, obj);
-
-  BNode *goal = new BNode();
-  goal->arraySize = col*row;
-  goal->x = new unsigned short[goal->arraySize];
-  goal->y = new unsigned short[goal->arraySize];
-  for(int i=0; i<goal->arraySize; i++) {
-    goal->x[i] = i % col;
-    goal->y[i] = i / col;
+  if(finding == NULL) {
+    finding = new RouteFinding(goal);
   }
-  problem = new RouteFinding_PuzzleBlock(start, goal);
-  problem->col = col;
-  problem->row = row;
-  problem->blankIndex = env->GetIntField(board, idBlankIndex);
-  problem->startFinding();
+  finding->startFinding(start);
 }
 
 JNIEXPORT void JNICALL Java_puzzleblock_PuzzleBlock_1AI_clearRouteFinding
-  (JNIEnv *, jobject)
+  (JNIEnv *env, jobject obj)
 {
-  delete problem;
+  finding->clearAnswer();
 }
 
 JNIEXPORT jint JNICALL Java_puzzleblock_PuzzleBlock_1AI_getBlockIndex_1nextMove
-  (JNIEnv *, jobject)
-{
-  return problem->getRoute();
-}
-
-JNIEXPORT void JNICALL Java_puzzleblock_PuzzleBlock_1AI_randomBlocks
   (JNIEnv *env, jobject obj)
 {
-  fetchJavaObjects(env, obj);
-  problem = new RouteFinding_PuzzleBlock(start, NULL);
-  problem->col = col;
-  problem->row = row;
-  problem->blankIndex = env->GetIntField(board, idBlankIndex);
-  problem->randomPath(100);
+  return finding->getRoute();
 }
