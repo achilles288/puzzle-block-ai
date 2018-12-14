@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <stack>
 #include <thread>
 
 
@@ -11,22 +12,18 @@
 
 Node::Node() {}
 
+Node::~Node() {}
+
+Node *Node::clone() {return new Node();}
+
 // Default heuristic function of node. Overridable.
-int Node::heuristic(Node *g) {
-  return (this == g) ? 0 : 1;
-}
+int Node::heuristic(Node *g) {return (this == g) ? 0 : 1;}
 
 // Overridable function.
 void Node::expandNode(std::vector<Node*>& vec) {}
 
 // Overridable function.
-Node *Node::getDuplicateNode(
-  std::vector<Node *>::iterator st,
-  std::vector<Node *>::iterator en
-)
-{
-  return NULL;
-}
+bool Node::isDuplicate(Node *n) {return false;}
 
 
 /*
@@ -49,6 +46,7 @@ Action::Action(Node *st, Node *en, int c, char p) {
 // Set up the goal node.
 RouteFinding::RouteFinding(Node *g) {
   goal = g;
+  frontier.reserve(100);
 }
 
 
@@ -60,21 +58,26 @@ RouteFinding::RouteFinding(Node *g) {
  * thread will do actions. Mean while, another route finding loop is being done.
  */
 void RouteFinding::startFinding(Node *st) {
+  search_no = 0;
+  timeout = 0;
   nearest = st;
   std::thread rf_th([this]() {
     st_clock = clock();
     try {
       while(true) {
         timeout += think_time;
-        frontier.push_back(nearest);
+        frontier.push_back(std::make_pair(nearest, 0));
         int res = findRoute();
         clearNodes();
         if(res == 0)
-          return;
+          break;
       }
+      float duration = (float)(clock() - st_clock) / CLOCKS_PER_SEC * 1000;
+      std::cout << "Computing time: " << duration << "ms" << std::endl;
     }
-    catch(std::exception ex) {
+    catch(std::exception& ex) {
       std::cout << "Error from route finding thread!\n" << ex.what() << std::endl;
+      std::exit(1);
     }
   });
   rf_th.detach();
@@ -89,89 +92,117 @@ using namespace std;
  * 
  * The function does 3 steps. Finds the node nearest to answer. Check if it is
  * the goal node. If not, seeks for the next nodes branched from it (expand node).
+ *
+ * For perfect performance, the frontier list and explored list are sorted by a
+ * criterion. To get the nearest node, simply pick the first element of frontier.
+ * To check duplicity, search the node by binary search which is O(log(n)).
+ * When inserting elements, binary search is used to get the position as well.
  */
 int RouteFinding::findRoute() {
   if(nearest->heuristic(goal) == 0) {
     std::cout << "Problem is already solved!\n";
     answer_mutex.lock();
-    answer.push_back(-1);
+    answer.push(-1);
     answer_mutex.unlock();
     return 0;
   }
 
   while(true) {
-    // Finds the node nearest to the goal from frontiers.
-    nearest = frontier[0];
-    int hc = nearest->cost + nearest->heuristic(goal);
-    for(vector<Node *>::iterator it=frontier.begin()+1; it!=frontier.end(); it++)
+    // Expand node of least heuristic and cost.
+    nearest = frontier.front().first;
+    nearest->expandNode(new_node);
+    // Move the expanded frontier to explored. Place in order by heuristic.
+    int h;
+    h = frontier.front().first->heuristic(goal);
+    pair<Node*, int> n = make_pair(frontier.front().first, h);
+    node_int_iter pos_near = lower_bound(explored.begin(), explored.end(), n,
+      [](Node_int const & p, Node_int const & q) -> bool
+        { return p.second < q.second; }
+    );
+    explored.insert(pos_near, n);
+    frontier.erase(frontier.begin());
+
+    // Iterate through the new nodes. Check duplicity, insert to the frontier.
+    for(action_iter it = nearest->action.begin(); it != nearest->action.end(); it++)
     {
-      Node *f = *it;
-      int i = f->cost + f->heuristic(goal);
-      if(i < hc) {
-        nearest = f;
-        hc = i;
+      Action *a = *it;
+      a->end->cost = nearest->cost + a->cost;
+      pair<node_int_iter, node_int_iter> range;
+      h = a->end->heuristic(goal);
+      n = make_pair(a->end, h);
+
+      bool isNewNode = true;
+
+      /*
+       * Get a range where the heuristic is equal.
+       * These elements are probably duplicate.
+       */
+      range = equal_range(explored.begin(), explored.end(), n,
+        [](Node_int const& p, Node_int const& q)->bool
+          { return p.second < q.second; }
+      );
+      for(node_int_iter p=range.first; p!=range.second; p++) {
+        // Check duplicate. If so, reject that node.
+        if(a->end->isDuplicate(p->first)) {
+          isNewNode = false;
+          new_node.erase(remove(new_node.begin(), new_node.end(), a->end));
+          delete a->end;
+          break;
+        }
+      }
+
+      if(isNewNode) {
+        a->end->parent = a;
+        new_node.erase(remove(new_node.begin(), new_node.end(), a->end));
+        // Insert the node to frontier list in order by heuristic + cost value.
+        n = make_pair(a->end, h + a->end->cost);
+        node_int_iter pos = lower_bound(frontier.begin(), frontier.end(), n,
+          [](Node_int const & p, Node_int const & q) -> bool
+            { return p.second < q.second; }
+        );
+        if(frontier.size() == frontier.max_size()) {
+          delete frontier.back().first;
+          frontier.erase(frontier.end()-1);
+        }
+        frontier.insert(pos, n);
       }
     }
 
+    h = nearest->heuristic(goal);
+
     // End loop if goal node is found or the think time is up.
-    int h = nearest->heuristic(goal);
     bool isTimeup = (clock() - st_clock) > (timeout * CLOCKS_PER_SEC / 1000);
-    if(isTimeup) {
-      nearest = frontier[0];
-      h = nearest->heuristic(goal);
-      for(vector<Node *>::iterator it=frontier.begin()+1; it!=frontier.end(); it++)
-      {
-        Node *f = *it;
-        int i = f->heuristic(goal);
-        if(i < h) {
-          nearest = f;
-          h = i;
-        }
-      }
-    }
+
+    // If think time is up, a node with least heuristic value is chosen.
+    if(isTimeup)
+      nearest = explored.front().first;
+
+    // Back-trace the steps to reach the node. Add these steps to answer list.
     if(h == 0 or isTimeup) {
       Action *action = nearest->parent;
-      vector<char> ans;
+      stack<char> stk;
       while(action != NULL) {
-        ans.insert(ans.begin(), action->parameter);
+        stk.push(action->parameter);
         action = action->start->parent;
       }
+
       answer_mutex.lock();
-      answer.insert(answer.end(), ans.begin(), ans.end());
+      while(not stk.empty()) {
+        answer.push(stk.top());
+        stk.pop();
+      }
+
       if(h == 0) {
-        answer.push_back(-1);
+        answer.push(-1);
         answer_mutex.unlock();
         return 0;
       }
       else {
         answer_mutex.unlock();
-        frontier.erase(remove(frontier.begin(), frontier.end(), nearest));
-        nearest->parent = NULL;
+        nearest = nearest->clone();
         return 1; // Next loop of route finding.
       }
     }
-
-    // Expand the selected node.
-    nearest->expandNode(new_node);
-    for(vector<Action*>::iterator it = nearest->action.begin();
-        it != nearest->action.end(); it++)
-    {
-      Action *a = *it;
-      Node *ex = a->end->getDuplicateNode(explored.begin(), explored.end());
-      Node *fr = a->end->getDuplicateNode(frontier.begin(), frontier.end());
-      if(ex != NULL or fr != NULL) {
-        new_node.erase(remove(new_node.begin(), new_node.end(), a->end));
-        delete a->end;
-      }
-      else {
-        a->end->cost = nearest->cost + a->cost;
-        a->end->parent = a;
-        new_node.erase(remove(new_node.begin(), new_node.end(), a->end));
-        frontier.push_back(a->end);
-      }
-    }
-    frontier.erase(remove(frontier.begin(), frontier.end(), nearest));
-    explored.push_back(nearest);
     std::cout << "searchNo: " << search_no << " heuristic: " << h << std::endl;
     search_no++;
   }
@@ -182,11 +213,11 @@ int RouteFinding::findRoute() {
 int RouteFinding::getRoute() {
   while(true) {
     answer_mutex.lock();
-    int len = answer.size();
+    bool isAvailable = not answer.empty();
     answer_mutex.unlock();
-    if(len > step) {
-      int i = answer[step];
-      step++;
+    if(isAvailable) {
+      int i = answer.front();
+      answer.pop();
       return i;
     }
   }
@@ -199,20 +230,14 @@ void RouteFinding::setThinkTime(int ms) {
 
 // Clear the nodes for the next search loop. Refresh.
 void RouteFinding::clearNodes() {
-  for(vector<Node*>::iterator it=new_node.begin(); it!=new_node.end(); it++)
+  for(node_iter it=new_node.begin(); it!=new_node.end(); it++)
     delete *it;
   new_node.clear();
-  for(vector<Node*>::iterator it=frontier.begin(); it!=frontier.end(); it++)
-    delete *it;
+  for(node_int_iter it=frontier.begin(); it!=frontier.end(); it++)
+    delete it->first;
   frontier.clear();
-  for(vector<Node*>::iterator it=explored.begin(); it!=explored.end(); it++)
-    delete *it;
+  for(node_int_iter it=explored.begin(); it!=explored.end(); it++)
+    delete it->first;
   explored.clear();
 }
 
-void RouteFinding::clearAnswer() {
-  answer.clear();
-  step = 0;
-  search_no = 0;
-  timeout = 0;
-}

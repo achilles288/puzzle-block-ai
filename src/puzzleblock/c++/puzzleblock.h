@@ -10,13 +10,14 @@
 class BoardNode: public Node {
   public:
     BoardNode();
+    ~BoardNode();
 
   private:
     char *x; // Block positions.
     char *y;
 
     int getBlockIndexByPosition(int x2, int y2);
-    void copyNodeData(BoardNode *n); // Copies the node data.
+    Node *clone(); // Copies the node data.
 
     int heuristic(Node *g); // Gets error between this node and goal node.
 
@@ -24,10 +25,7 @@ class BoardNode: public Node {
     void expandNode(std::vector<Node*>& vec);
 
     // To remove not to go back to explored node.
-    Node *getDuplicateNode(
-      std::vector<Node*>::iterator st,
-      std::vector<Node*>::iterator en
-    );
+    bool isDuplicate(Node *n);
 
   friend void fetchJavaObjects(JNIEnv *env, jobject obj);
 };

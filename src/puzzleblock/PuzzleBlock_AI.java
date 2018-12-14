@@ -30,7 +30,7 @@ public class PuzzleBlock_AI {
     
     public void startPlaying(Board b) {
         board = b;
-        PuzzleBlock.setInteractionEnabled(false);
+        PuzzleBlock.setInteractionEnabled(false);        
         startRouteFinding();
         playing = new Timer(250, e -> {
             int i = getBlockIndex_nextMove();

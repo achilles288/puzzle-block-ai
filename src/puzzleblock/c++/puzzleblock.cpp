@@ -10,6 +10,11 @@ BoardNode::BoardNode() {
   y = new char[arraySize];
 }
 
+BoardNode::~BoardNode() {
+  delete x;
+  delete y;
+}
+
 // Convert position to index.
 int BoardNode::getBlockIndexByPosition(int x2, int y2) {
   for(int i=0; i<arraySize; i++) {
@@ -20,11 +25,13 @@ int BoardNode::getBlockIndexByPosition(int x2, int y2) {
   return -1;
 }
 
-void BoardNode::copyNodeData(BoardNode *n) {
+Node *BoardNode::clone() {
+  BoardNode *b = new BoardNode();
   for(int i=0; i<arraySize; i++) {
-    n->x[i] = x[i];
-    n->y[i] = y[i];
+    b->x[i] = x[i];
+    b->y[i] = y[i];
   }
+  return b;
 }
 
 // h(s) = number of error blocks + total displacement of the blocks
@@ -50,8 +57,7 @@ void BoardNode::expandNode(vector<Node*>& vec) {
 
   int itop = getBlockIndexByPosition(bx, by-1);
   if(itop != -1) {
-    BoardNode *e = new BoardNode();
-    copyNodeData(e);
+    BoardNode *e = (BoardNode*)clone();
     e->y[itop] = by;
     e->y[blankIndex] = by-1;
     Action *a = new Action(this, e, 1, itop);
@@ -61,8 +67,7 @@ void BoardNode::expandNode(vector<Node*>& vec) {
 
   int iright = getBlockIndexByPosition(bx+1, by);
   if(iright != -1) {
-    BoardNode *e = new BoardNode();
-    copyNodeData(e);
+    BoardNode *e = (BoardNode*)clone();
     e->x[iright] = bx;
     e->x[blankIndex] = bx+1;
     Action *a = new Action(this, e, 1, iright);
@@ -72,8 +77,7 @@ void BoardNode::expandNode(vector<Node*>& vec) {
 
   int ibottom = getBlockIndexByPosition(bx, by+1);
   if(ibottom != -1) {
-    BoardNode *e = new BoardNode();
-    copyNodeData(e);
+    BoardNode *e = (BoardNode*)clone();
     e->y[ibottom] = by;
     e->y[blankIndex] = by+1;
     Action *a = new Action(this, e, 1, ibottom);
@@ -83,8 +87,7 @@ void BoardNode::expandNode(vector<Node*>& vec) {
 
   int ileft = getBlockIndexByPosition(bx-1, by);
   if(ileft != -1) {
-    BoardNode *e = new BoardNode();
-    copyNodeData(e);
+    BoardNode *e = (BoardNode*)clone();
     e->x[ileft] = bx;
     e->x[blankIndex] = bx-1;
     Action *a = new Action(this, e, 1, ileft);
@@ -95,24 +98,16 @@ void BoardNode::expandNode(vector<Node*>& vec) {
 
 
 // Compares with every node from the list.
-Node *BoardNode::getDuplicateNode(
-  vector<Node*>::iterator st,
-  vector<Node*>::iterator en
-)
-{
-  for(std::vector<Node*>::iterator it = st; it != en; it++) {
-    BoardNode *n = (BoardNode*)(*it);
-    bool identical = true;
-    for(int i=0; i<arraySize; i++) {
-      if(x[i] != n->x[i] or y[i] != n->y[i]) {
-        identical = false;
-        break;
-      }
+bool BoardNode::isDuplicate(Node *n) {
+  BoardNode *b = (BoardNode*)(n);
+  bool identical = true;
+  for(int i=0; i<arraySize; i++) {
+    if(x[i] != b->x[i] or y[i] != b->y[i]) {
+      identical = false;
+      break;
     }
-    if(identical)
-      return *it;
   }
-  return NULL;
+  return identical;
 }
 
 
@@ -169,15 +164,13 @@ JNIEXPORT void JNICALL Java_puzzleblock_PuzzleBlock_1AI_startRouteFinding
   fetchJavaObjects(env, obj);
   if(finding == NULL) {
     finding = new RouteFinding(goal);
+    finding->setThinkTime(8000);
   }
   finding->startFinding(start);
 }
 
 JNIEXPORT void JNICALL Java_puzzleblock_PuzzleBlock_1AI_clearRouteFinding
-  (JNIEnv *env, jobject obj)
-{
-  finding->clearAnswer();
-}
+  (JNIEnv *env, jobject obj) {}
 
 JNIEXPORT jint JNICALL Java_puzzleblock_PuzzleBlock_1AI_getBlockIndex_1nextMove
   (JNIEnv *env, jobject obj)

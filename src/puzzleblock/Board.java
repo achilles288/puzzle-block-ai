@@ -118,7 +118,6 @@ public class Board extends JPanel implements ComponentListener {
             return true;
         }
         else {
-            System.out.println("Wrong move!");
             return false;
         }
     }
