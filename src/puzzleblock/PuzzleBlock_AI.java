@@ -12,18 +12,13 @@ import javax.swing.Timer;
  * @author khant
  */
 public class PuzzleBlock_AI {
+    static {
+       System.loadLibrary("puzzleblock");
+    }
+    
     int totalMoves;
     int computingTime;
     Board board;
-    
-    static boolean libLoaded = false;
-    
-    public PuzzleBlock_AI() {
-        if(!libLoaded) {
-           String libpuzzleblock = getClass().getResource("c++/" + System.mapLibraryName("puzzleblock")).getPath();
-           System.load(libpuzzleblock);
-        }
-    }
     
     private Timer playing;
     int steps = 0;
