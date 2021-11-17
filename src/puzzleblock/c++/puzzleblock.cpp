@@ -18,7 +18,7 @@ BoardNode::~BoardNode() {
 // Convert position to index.
 int BoardNode::getBlockIndexByPosition(int x2, int y2) {
   for(int i=0; i<arraySize; i++) {
-    if(x[i] == x2 and y[i] == y2) {
+    if(x[i] == x2 && y[i] == y2) {
       return i;
     }
   }
@@ -40,7 +40,7 @@ int BoardNode::heuristic(Node *g) {
   int h1 = 0;
   int h2 = 0;
   for(int i=0; i<arraySize; i++) {
-    if(x[i] != goal->x[i] or y[i] != goal->y[i])
+    if(x[i] != goal->x[i] || y[i] != goal->y[i])
       h1 += 2;
     h2 = h2 + abs(x[i] - goal->x[i]) + abs(y[i] - goal->y[i]);
   };
@@ -102,7 +102,7 @@ bool BoardNode::isDuplicate(Node *n) {
   BoardNode *b = (BoardNode*)(n);
   bool identical = true;
   for(int i=0; i<arraySize; i++) {
-    if(x[i] != b->x[i] or y[i] != b->y[i]) {
+    if(x[i] != b->x[i] || y[i] != b->y[i]) {
       identical = false;
       break;
     }
@@ -151,8 +151,8 @@ void fetchJavaObjects(JNIEnv *env, jobject obj) {
   }
   start = new BoardNode();
   for(int i=0; i<arraySize; i++) {
-    start->x[i] = env->GetIntField(blocks[i], idX);
-    start->y[i] = env->GetIntField(blocks[i], idY);
+    start->x[i] = (char) env->GetIntField(blocks[i], idX);
+    start->y[i] = (char) env->GetIntField(blocks[i], idY);
   }
 }
 

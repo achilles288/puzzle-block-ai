@@ -1,0 +1,2 @@
+Main-Class: puzzleblock.PuzzleBlock
+Manifest-Version: 1.0

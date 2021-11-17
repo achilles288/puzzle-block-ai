@@ -60,7 +60,7 @@ public class PuzzleBlock {
             puzzleAI.startPlaying(board);
         });
         f.add(btnAI);
-        btnRandom = new JButton("Random steps 100");
+        btnRandom = new JButton("Random steps 50");
         btnRandom.setBounds(650, 180, 160, 40);
         btnRandom.addActionListener((e) -> {
             board.randomBlocks();

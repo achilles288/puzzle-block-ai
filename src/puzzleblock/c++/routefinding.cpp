@@ -178,7 +178,7 @@ int RouteFinding::findRoute() {
       nearest = explored.front().first;
 
     // Back-trace the steps to reach the node. Add these steps to answer list.
-    if(h == 0 or isTimeup) {
+    if(h == 0 || isTimeup) {
       Action *action = nearest->parent;
       stack<char> stk;
       while(action != NULL) {
@@ -187,7 +187,7 @@ int RouteFinding::findRoute() {
       }
 
       answer_mutex.lock();
-      while(not stk.empty()) {
+      while(!stk.empty()) {
         answer.push(stk.top());
         stk.pop();
       }
@@ -213,7 +213,7 @@ int RouteFinding::findRoute() {
 int RouteFinding::getRoute() {
   while(true) {
     answer_mutex.lock();
-    bool isAvailable = not answer.empty();
+    bool isAvailable = !answer.empty();
     answer_mutex.unlock();
     if(isAvailable) {
       int i = answer.front();

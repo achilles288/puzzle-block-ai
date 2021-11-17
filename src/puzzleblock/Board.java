@@ -39,15 +39,15 @@ public class Board extends JPanel implements ComponentListener {
         setLayout(null);
         addComponentListener(this);
         
-        sliding = new Timer(4, e -> {
+        sliding = new Timer(6, e -> {
             slideCount++;
             int x, y;
-            float f = slideCount * 0.05f - 1.0f;
+            float f = slideCount * 0.1f - 1.0f;
             x = (int)(((float)slidingBlock.x+(slideX*f)) * (blockWidth+spacing) + spacing);
             y = (int)(((float)slidingBlock.y+(slideY*f)) * (blockHeight+spacing) + spacing);
             slidingBlock.setLocation(x, y);
             slidingBlock.repaint();
-            if(slideCount == 20) {
+            if(slideCount == 10) {
                 sliding.stop();
                 slidingBlank.setVisible(true);
                 slidingBlank.allocateSpace();
